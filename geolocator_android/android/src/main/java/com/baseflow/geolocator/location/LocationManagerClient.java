@@ -34,7 +34,6 @@ class LocationManagerClient implements LocationClient, LocationListenerCompat {
   private boolean isListening = false;
 
   @Nullable private Location currentBestLocation;
-  @Nullable private String currentLocationProvider;
   @Nullable private PositionChangedCallback positionChangedCallback;
   @Nullable private ErrorCallback errorCallback;
 
@@ -76,27 +75,6 @@ class LocationManagerClient implements LocationClient, LocationListenerCompat {
     if (isNewer && !isSignificantlyLessAccurate && isFromSameProvider) return true;
 
     return false;
-  }
-
-  private static @Nullable String determineProvider(
-      @NonNull LocationManager locationManager,
-      @NonNull LocationAccuracy accuracy) {
-
-      final List<String> enabledProviders = locationManager.getProviders(true);
-
-      if (accuracy == LocationAccuracy.lowest) {
-          return LocationManager.PASSIVE_PROVIDER;
-      } else if (enabledProviders.contains(LocationManager.GPS_PROVIDER)) {
-          return LocationManager.GPS_PROVIDER;
-      } else if (enabledProviders.contains(LocationManager.NETWORK_PROVIDER)) {
-          return LocationManager.NETWORK_PROVIDER;
-      } else if (enabledProviders.contains(LocationManager.FUSED_PROVIDER) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-          return LocationManager.FUSED_PROVIDER;
-      } else if (!enabledProviders.isEmpty()){
-          return enabledProviders.get(0);
-      } else {
-          return null;
-      }
   }
 
   private static @LocationRequestCompat.Quality int accuracyToQuality(@NonNull LocationAccuracy accuracy) {
@@ -175,9 +153,7 @@ class LocationManagerClient implements LocationClient, LocationListenerCompat {
       quality = accuracyToQuality(accuracy);
     }
 
-    this.currentLocationProvider = determineProvider(this.locationManager, accuracy);
-
-    if (this.currentLocationProvider == null) {
+    if (!this.locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
       errorCallback.onError(ErrorCodes.locationServicesDisabled);
       return;
     }
@@ -192,7 +168,7 @@ class LocationManagerClient implements LocationClient, LocationListenerCompat {
 
     LocationManagerCompat.requestLocationUpdates(
         this.locationManager,
-        this.currentLocationProvider,
+        LocationManager.GPS_PROVIDER,
         locationRequest,
         this,
         Looper.getMainLooper());
@@ -241,7 +217,7 @@ class LocationManagerClient implements LocationClient, LocationListenerCompat {
   @SuppressLint("MissingPermission")
   @Override
   public void onProviderDisabled(String provider) {
-    if (provider.equals(this.currentLocationProvider)) {
+    if (provider.equals(LocationManager.GPS_PROVIDER)) {
       if (isListening) {
         this.locationManager.removeUpdates(this);
       }
@@ -249,8 +225,6 @@ class LocationManagerClient implements LocationClient, LocationListenerCompat {
       if (this.errorCallback != null) {
         errorCallback.onError(ErrorCodes.locationServicesDisabled);
       }
-
-      this.currentLocationProvider = null;
     }
   }
 }

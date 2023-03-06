@@ -63,27 +63,7 @@ public class GeolocationManager
       Context context,
       boolean forceAndroidLocationManager,
       @Nullable LocationOptions locationOptions) {
-    if (forceAndroidLocationManager) {
-      return new LocationManagerClient(context, locationOptions);
-    }
-
-    return isGooglePlayServicesAvailable(context)
-        ? new FusedLocationClient(context, locationOptions)
-        : new LocationManagerClient(context, locationOptions);
-  }
-
-  private boolean isGooglePlayServicesAvailable(Context context) {
-    try {
-      GoogleApiAvailability googleApiAvailability = GoogleApiAvailability.getInstance();
-      int resultCode = googleApiAvailability.isGooglePlayServicesAvailable(context);
-      return resultCode == ConnectionResult.SUCCESS;
-    }
-    // If the Google API class is not available conclude that the play services
-    // are unavailable. This might happen when the GMS package has been excluded by
-    // the app developer due to its proprietary license.
-    catch(NoClassDefFoundError e) {
-      return false;
-    }
+    return new LocationManagerClient(context, locationOptions);
   }
 
   @Override
