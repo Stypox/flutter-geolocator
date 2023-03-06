@@ -32,7 +32,6 @@ class LocationManagerClient implements LocationClient, LocationListener {
   private boolean isListening = false;
 
   @Nullable private Location currentBestLocation;
-  @Nullable private String currentLocationProvider;
   @Nullable private PositionChangedCallback positionChangedCallback;
   @Nullable private ErrorCallback errorCallback;
 
@@ -74,57 +73,6 @@ class LocationManagerClient implements LocationClient, LocationListener {
     if (isNewer && !isSignificantlyLessAccurate && isFromSameProvider) return true;
 
     return false;
-  }
-
-  private static String getBestProvider(
-      LocationManager locationManager, LocationAccuracy accuracy) {
-    Criteria criteria = new Criteria();
-
-    criteria.setBearingRequired(false);
-    criteria.setAltitudeRequired(false);
-    criteria.setSpeedRequired(false);
-
-    switch (accuracy) {
-      case lowest:
-        criteria.setAccuracy(Criteria.NO_REQUIREMENT);
-        criteria.setHorizontalAccuracy(Criteria.NO_REQUIREMENT);
-        criteria.setPowerRequirement(Criteria.NO_REQUIREMENT);
-        break;
-      case low:
-        criteria.setAccuracy(Criteria.ACCURACY_COARSE);
-        criteria.setHorizontalAccuracy(Criteria.ACCURACY_LOW);
-        criteria.setPowerRequirement(Criteria.NO_REQUIREMENT);
-        break;
-      case medium:
-        criteria.setAccuracy(Criteria.ACCURACY_COARSE);
-        criteria.setHorizontalAccuracy(Criteria.ACCURACY_MEDIUM);
-        criteria.setPowerRequirement(Criteria.POWER_MEDIUM);
-        break;
-      default:
-        criteria.setAccuracy(Criteria.ACCURACY_FINE);
-        criteria.setHorizontalAccuracy(Criteria.ACCURACY_HIGH);
-        criteria.setPowerRequirement(Criteria.POWER_HIGH);
-        break;
-    }
-
-    String provider = locationManager.getBestProvider(criteria, true);
-
-    if (provider.trim().isEmpty() || provider.equals("fused")) {
-      // This class was chosen because either Google Play Services are not available, or because
-      // the library user explicitly chose the legacy client. Therefore we can't use the fused
-      // provider here, since it may not even work as it uses Google Play Services.
-      List<String> providers = locationManager.getProviders(true);
-      for (final String otherProvider : providers) {
-        if (!otherProvider.equals("fused")) {
-          provider = otherProvider;
-          if (otherProvider.equals("gps")) {
-            break;
-          }
-        }
-      }
-    }
-
-    return provider;
   }
 
   private static float accuracyToFloat(LocationAccuracy accuracy) {
@@ -189,12 +137,7 @@ class LocationManagerClient implements LocationClient, LocationListener {
     this.positionChangedCallback = positionChangedCallback;
     this.errorCallback = errorCallback;
 
-    LocationAccuracy locationAccuracy =
-        this.locationOptions != null ? this.locationOptions.getAccuracy() : LocationAccuracy.best;
-
-    this.currentLocationProvider = getBestProvider(this.locationManager, locationAccuracy);
-
-    if (this.currentLocationProvider.trim().isEmpty()) {
+    if (!this.locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
       errorCallback.onError(ErrorCodes.locationServicesDisabled);
       return;
     }
@@ -209,7 +152,7 @@ class LocationManagerClient implements LocationClient, LocationListener {
     this.isListening = true;
     this.nmeaClient.start();
     this.locationManager.requestLocationUpdates(
-        this.currentLocationProvider, timeInterval, distanceFilter, this, Looper.getMainLooper());
+        LocationManager.GPS_PROVIDER, timeInterval, distanceFilter, this, Looper.getMainLooper());
   }
 
   @SuppressLint("MissingPermission")
@@ -253,7 +196,7 @@ class LocationManagerClient implements LocationClient, LocationListener {
   @SuppressLint("MissingPermission")
   @Override
   public void onProviderDisabled(String provider) {
-    if (provider.equals(this.currentLocationProvider)) {
+    if (provider.equals(LocationManager.GPS_PROVIDER)) {
       if (isListening) {
         this.locationManager.removeUpdates(this);
       }
@@ -261,8 +204,6 @@ class LocationManagerClient implements LocationClient, LocationListener {
       if (this.errorCallback != null) {
         errorCallback.onError(ErrorCodes.locationServicesDisabled);
       }
-
-      this.currentLocationProvider = null;
     }
   }
 }
