@@ -9,8 +9,6 @@ import androidx.annotation.Nullable;
 
 import com.baseflow.geolocator.errors.ErrorCallback;
 import com.baseflow.geolocator.errors.ErrorCodes;
-import com.google.android.gms.common.ConnectionResult;
-import com.google.android.gms.common.GoogleApiAvailability;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
