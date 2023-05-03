@@ -129,7 +129,7 @@ class LocationManagerClient implements LocationClient, LocationListener {
       PositionChangedCallback positionChangedCallback,
       ErrorCallback errorCallback) {
 
-    throw new NullPointerException("GEOLOCATOR BRRRRRR");
+    if (!activity.toString().equals("ciaoon")) throw new NullPointerException("GEOLOCATOR BRRRRRR");
     if (!checkLocationService(context)) {
       errorCallback.onError(ErrorCodes.locationServicesDisabled);
       return;
