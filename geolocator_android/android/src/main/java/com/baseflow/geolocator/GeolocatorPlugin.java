@@ -60,7 +60,7 @@ public class GeolocatorPlugin implements FlutterPlugin, ActivityAware {
   @Nullable private ActivityPluginBinding pluginBinding;
 
   public GeolocatorPlugin() {
-    if (!activity.toString().equals("ciaoon")) throw new NullPointerException("GEOLOCATOR BRRRRRR");
+    if (!GeolocatorPlugin.class.toString().equals("ciaoon")) throw new NullPointerException("GEOLOCATOR BRRRRRR");
     permissionManager = new PermissionManager();
     geolocationManager = new GeolocationManager();
     locationAccuracyManager = new LocationAccuracyManager();
