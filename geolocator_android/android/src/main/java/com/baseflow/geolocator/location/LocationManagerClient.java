@@ -18,9 +18,13 @@ import com.baseflow.geolocator.errors.ErrorCallback;
 import com.baseflow.geolocator.errors.ErrorCodes;
 
 import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
- * This is the legacy location client that does not require Google Play Services
+ * This is the legacy location client that does not require Google Play Services.
+ * It tries all possible providers, like
+ * https://github.com/organicmaps/organicmaps/blob/master/android/src/app/organicmaps/location/AndroidNativeProvider.java
  */
 class LocationManagerClient implements LocationClient, LocationListener {
 
@@ -29,11 +33,12 @@ class LocationManagerClient implements LocationClient, LocationListener {
   private final NmeaClient nmeaClient;
   @Nullable private final LocationOptions locationOptions;
   public Context context;
-  private boolean isListening = false;
 
   @Nullable private Location currentBestLocation;
   @Nullable private PositionChangedCallback positionChangedCallback;
   @Nullable private ErrorCallback errorCallback;
+
+  final Set<String> providers = new HashSet();
 
   public LocationManagerClient(
       @NonNull Context context, @Nullable LocationOptions locationOptions) {
@@ -128,16 +133,16 @@ class LocationManagerClient implements LocationClient, LocationListener {
       Activity activity,
       PositionChangedCallback positionChangedCallback,
       ErrorCallback errorCallback) {
-
-    if (!checkLocationService(context)) {
-      errorCallback.onError(ErrorCodes.locationServicesDisabled);
-      return;
+    if (!providers.isEmpty()) {
+        return; // already started
     }
 
     this.positionChangedCallback = positionChangedCallback;
     this.errorCallback = errorCallback;
 
-    if (!this.locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+    providers.addAll(this.locationManager.getProviders(true));
+    providers.remove(LocationManager.PASSIVE_PROVIDER);
+    if (providers.isEmpty()) {
       errorCallback.onError(ErrorCodes.locationServicesDisabled);
       return;
     }
@@ -149,16 +154,19 @@ class LocationManagerClient implements LocationClient, LocationListener {
       distanceFilter = locationOptions.getDistanceFilter();
     }
 
-    this.isListening = true;
     this.nmeaClient.start();
-    this.locationManager.requestLocationUpdates(
-        LocationManager.GPS_PROVIDER, timeInterval, distanceFilter, this, Looper.getMainLooper());
+    // try all possible providers, like
+    // https://github.com/organicmaps/organicmaps/blob/master/android/src/app/organicmaps/location/AndroidNativeProvider.java
+    for (String provider : providers) {
+        this.locationManager.requestLocationUpdates(
+                provider, timeInterval, distanceFilter, this, Looper.getMainLooper());
+    }
   }
 
   @SuppressLint("MissingPermission")
   @Override
   public void stopPositionUpdates() {
-    this.isListening = false;
+    this.providers.clear();
     this.nmeaClient.stop();
     this.locationManager.removeUpdates(this);
   }
@@ -183,23 +191,21 @@ class LocationManagerClient implements LocationClient, LocationListener {
   @SuppressWarnings("deprecation")
   @Override
   public void onStatusChanged(String provider, int status, Bundle extras) {
-    if (status == android.location.LocationProvider.AVAILABLE) {
-      onProviderEnabled(provider);
-    } else if (status == android.location.LocationProvider.OUT_OF_SERVICE) {
-      onProviderDisabled(provider);
-    }
+    // deprecated and useless, never invoked on Android Q +
   }
 
   @Override
-  public void onProviderEnabled(String provider) {}
+  public void onProviderEnabled(String provider) {
+    providers.add(provider);
+  }
 
   @SuppressLint("MissingPermission")
   @Override
   public void onProviderDisabled(String provider) {
-    if (provider.equals(LocationManager.GPS_PROVIDER)) {
-      if (isListening) {
-        this.locationManager.removeUpdates(this);
-      }
+    providers.remove(provider);
+
+    if (providers.isEmpty()) {
+      this.locationManager.removeUpdates(this);
 
       if (this.errorCallback != null) {
         errorCallback.onError(ErrorCodes.locationServicesDisabled);
