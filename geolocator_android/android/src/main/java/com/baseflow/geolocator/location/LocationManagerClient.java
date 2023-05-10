@@ -40,7 +40,7 @@ class LocationManagerClient implements LocationClient, LocationListenerCompat {
   @Nullable private PositionChangedCallback positionChangedCallback;
   @Nullable private ErrorCallback errorCallback;
 
-  final Set<String> providers = new HashSet();
+  final Set<String> providers = new HashSet<String>();
 
   public LocationManagerClient(
       @NonNull Context context, @Nullable LocationOptions locationOptions) {
